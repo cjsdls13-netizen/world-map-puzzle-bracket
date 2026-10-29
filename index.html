@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>세계지도 퍼즐 대진표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef4f8; --panel:#ffffff; --ink:#15243a; --muted:#5f6f84; --line:#cfdbe6;
+  --ocean:#1565c0; --ocean-2:#0d47a1; --land:#2e9e6b; --land-soft:#e3f5ec;
+  --gold:#f2a900; --gold-soft:#fff4d6; --bye:#9aa8b8; --lose:#a7b3c1; --danger:#d64545;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+header{background:linear-gradient(120deg,var(--ocean-2),var(--ocean) 55%,#1e88a8);color:#fff;padding:18px 16px 20px}
+.hwrap{max-width:1600px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.globe{font-size:34px;line-height:1}
+#title{flex:1;min-width:240px;background:transparent;border:1px dashed transparent;border-radius:8px;color:#fff;font-size:clamp(20px,3vw,30px);font-weight:900;padding:2px 6px}
+#title:hover,#title:focus{border-color:rgba(255,255,255,.5);outline:none}
+.classbadge{background:rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font-weight:700;font-size:18px;white-space:nowrap}
+main{max-width:1600px;margin:0 auto;padding:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row+.row{margin-top:12px}
+label.l{font-weight:700;font-size:14px;color:var(--muted)}
+select,input[type=number],input[type=text],textarea{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff}
+input[type=number]{width:80px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;cursor:pointer;font-weight:500}
+.btn:hover{background:#f3f7fb}
+.btn.primary{background:var(--ocean);border-color:var(--ocean);color:#fff;font-weight:700;padding:10px 22px;font-size:17px}
+.btn.primary:hover{background:var(--ocean-2)}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+.spacer{flex:1}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;margin-top:10px}
+.chip{border:1px solid #9fd3b9;background:var(--land-soft);color:#11603d;border-radius:8px;padding:6px 0;text-align:center;font-weight:700;cursor:pointer;user-select:none}
+.chip.off{background:#f1f3f5;border-color:#dde2e7;color:#a3adb8;text-decoration:line-through;font-weight:400}
+.hint{font-size:13px;color:var(--muted)}
+.summary{font-weight:700}
+.summary b{color:var(--ocean)}
+.warn{color:var(--danger);font-weight:700;font-size:14px}
+details summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:14px}
+textarea{width:100%;min-height:110px;margin-top:8px;resize:vertical}
+
+#wrap{position:relative;overflow:auto;width:100%}
+#wrap.fit{overflow:hidden}
+#bracket{position:relative;transform-origin:top left}
+#bracket svg{position:absolute;left:0;top:0;overflow:visible}
+.rlabel{position:absolute;text-align:center;font-weight:900;color:var(--ocean);font-size:15px;letter-spacing:.5px}
+.match{position:absolute;background:#fff;border:2px solid #b9c9d8;border-radius:9px;overflow:hidden;box-shadow:0 1px 2px rgba(20,40,70,.06)}
+.match.final{border-color:var(--gold);box-shadow:0 0 0 4px var(--gold-soft)}
+.match .no{position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:#9aabbc;pointer-events:none}
+.slot{height:30px;display:flex;align-items:center;gap:6px;padding:0 22px 0 9px;white-space:nowrap;overflow:hidden}
+.slot+.slot{border-top:1px solid #e1e8ef}
+.slot .n{font-weight:900;font-size:18px;min-width:22px}
+.slot .nm{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.slot.click{cursor:pointer}
+.slot.click:hover{background:#eef5fd}
+.slot.win{background:var(--land-soft)}
+.slot.win .n{color:#11603d}
+.slot.win::after{content:"✔";margin-left:auto;color:var(--land);font-weight:900}
+.slot.lose .n,.slot.lose .nm{color:var(--lose)}
+.slot.bye{color:var(--bye);font-size:13px;font-style:italic}
+.slot.tbd{color:#c3ccd6}
+.slot.spin .n{color:var(--ocean)}
+.champ{position:absolute;text-align:center;border-radius:12px;padding:8px 6px;background:var(--gold-soft);border:2px dashed var(--gold);font-weight:900}
+.champ .cup{font-size:26px;line-height:1}
+.champ .cn{font-size:22px;color:#8a5a00}
+.champ.empty{background:#fafbfc;border-color:#d8e0e8;color:#b0bccb;font-weight:500}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.empty-state{text-align:center;color:var(--muted);padding:50px 10px}
+.empty-state .big{font-size:46px}
+
+.mlist{columns:4 220px;column-gap:20px;font-size:14px}
+.mlist h4{margin:10px 0 4px;color:var(--ocean);break-after:avoid}
+.mlist div.m{padding:2px 0;break-inside:avoid}
+.mlist .done{color:var(--muted)}
+.mlist .done b{color:#11603d}
+
+.confetti{position:fixed;top:-12px;width:10px;height:14px;z-index:99;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
+
+@media (max-width:640px){
+  main{padding:12px 16px}
+  .btn.primary{width:100%}
+}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{background:#fff}
+  header{background:none;color:#000;padding:0 0 6px}
+  #title{color:#000}
+  .classbadge{background:none;border:1px solid #000;color:#000}
+  .noprint,.panel.setup,.toolbar,#listPanel{display:none!important}
+  .panel{border:none;padding:0}
+  .match.final{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <span class="globe">🌏</span>
+    <input id="title" type="text" aria-label="대회 이름">
+    <span class="classbadge" id="badge">1반</span>
+  </div>
+</header>
+
+<main>
+  <section class="panel setup">
+    <div class="row">
+      <label class="l" for="classSel">반 선택</label>
+      <select id="classSel"></select>
+      <button class="btn" id="addClass">+ 반 추가</button>
+      <button class="btn" id="renameClass">이름 변경</button>
+      <button class="btn danger" id="delClass">반 삭제</button>
+    </div>
+    <div class="row">
+      <label class="l" for="maxNo">마지막 번호</label>
+      <input id="maxNo" type="number" min="2" max="64">
+      <label class="l" for="absentTxt">결번·불참</label>
+      <input id="absentTxt" type="text" placeholder="예) 5, 12, 20" style="width:200px">
+      <button class="btn" id="allOn">모두 참가</button>
+      <span class="hint">아래 번호를 눌러도 결번 처리됩니다.</span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="row" style="margin-top:14px">
+      <span class="summary" id="summary"></span>
+      <span class="spacer"></span>
+      <button class="btn primary" id="drawBtn">🎲 대진 추첨</button>
+    </div>
+    <div class="row"><span class="warn" id="warn"></span></div>
+    <div class="row">
+      <details style="width:100%">
+        <summary>학생 이름 넣기 (선택 · 이 컴퓨터 브라우저에만 저장)</summary>
+        <p class="hint" style="margin:6px 0 0">한 줄에 "번호 이름" 형식으로 입력하세요. 엑셀에서 번호·이름 두 열을 복사해 붙여 넣어도 됩니다.</p>
+        <textarea id="names" placeholder="1 김민준&#10;2 이서연&#10;3 박지호"></textarea>
+        <label class="hint"><input type="checkbox" id="showNames"> 대진표에 이름 표시</label>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel" id="bracketPanel">
+    <div class="toolbar">
+      <span class="hint">번호를 눌러 이긴 학생을 표시하세요. 다시 누르면 취소됩니다.</span>
+      <span class="spacer"></span>
+      <label class="hint"><input type="checkbox" id="fitChk" checked> 화면에 맞추기</label>
+      <button class="btn" id="resetResults">결과 지우기</button>
+      <button class="btn" id="fullBtn">전체 화면</button>
+      <button class="btn" id="printBtn">인쇄</button>
+    </div>
+    <div id="wrap" class="fit"><div id="bracket"></div></div>
+  </section>
+
+  <section class="panel" id="listPanel">
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+
+<script>
+(function(){
+const KEY = 'wmp-bracket-v1';
+const $ = s => document.querySelector(s);
+
+// ---------- storage ----------
+function defaultClass(name){ return {name, maxNo:28, absent:[], names:'', showNames:false, bracket:null}; }
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && s.classes && Object.keys(s.classes).length) return s;
+  }catch(e){}
+  return {title:'세계지도 퍼즐 맞추기 대회', current:'c1', classes:{c1:defaultClass('1반')}};
+}
+let store = load();
+if(!store.classes[store.current]) store.current = Object.keys(store.classes)[0];
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
+const cls = () => store.classes[store.current];
+
+// ---------- helpers ----------
+function participants(c){
+  const off = new Set(c.absent);
+  const out = [];
+  for(let i=1;i<=c.maxNo;i++) if(!off.has(i)) out.push(i);
+  return out;
+}
+function bracketSize(n){ let s=2; while(s<n) s*=2; return s; }
+function roundName(players){ return players===2?'결승':players===4?'준결승':players+'강'; }
+function seedOrder(n){
+  let o=[1];
+  while(o.length<n){ const m=o.length*2+1; o=o.flatMap(s=>[s,m-s]); }
+  return o;
+}
+function randInt(n){
+  const a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]%n;
+}
+function shuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=randInt(i+1); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function parseNames(txt){
+  const m={};
+  (txt||'').split(/\r?\n/).forEach(line=>{
+    const r=line.match(/^\s*(\d+)\s*(?:번)?[\s.,:)\-]*\s*(.+?)\s*$/);
+    if(r) m[+r[1]]=r[2];
+  });
+  return m;
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+// ---------- bracket logic ----------
+function rounds(b){ return Math.log2(b.size); }
+function players(b,r,i){
+  if(r===0) return [b.slots[2*i], b.slots[2*i+1]];
+  return [winner(b,r-1,2*i), winner(b,r-1,2*i+1)];
+}
+function isBye(b,r,i){
+  if(r!==0) return false;
+  const [p,q]=players(b,0,i);
+  return (p==null)!==(q==null);
+}
+function winner(b,r,i){
+  const [p,q]=players(b,r,i);
+  if(r===0){
+    if(p==null && q==null) return null;
+    if(p==null) return q;
+    if(q==null) return p;
+  }
+  if(p==null||q==null) return null;
+  const w=b.winners[r+'-'+i];
+  return w===0?p:w===1?q:null;
+}
+function clearUpward(b,r,i){
+  const R=rounds(b);
+  for(let rr=r+1, ii=i>>1; rr<R; rr++, ii>>=1) delete b.winners[rr+'-'+ii];
+}
+function makeBracket(list){
+  const size=bracketSize(list.length);
+  const order=seedOrder(size);
+  const seeded=shuffle(list);
+  const slots=order.map(s=> s<=seeded.length ? seeded[s-1] : null);
+  return {size, slots, winners:{}, members:list.slice().sort((a,b)=>a-b)};
+}
+function matchNumbers(b){
+  const R=rounds(b), nums={}; let n=1;
+  for(let r=0;r<R;r++){
+    const cnt=b.size/2**(r+1);
+    for(let i=0;i<cnt;i++) if(!isBye(b,r,i)) nums[r+'-'+i]=n++;
+  }
+  return nums;
+}
+
+// ---------- setup panel ----------
+function renderSetup(){
+  const c=cls();
+  $('#title').value=store.title;
+  $('#badge').textContent=c.name;
+  document.title=c.name+' · 세계지도 퍼즐 대진표';
+  const sel=$('#classSel');
+  sel.innerHTML=Object.entries(store.classes).map(([id,v])=>`<option value="${id}">${esc(v.name)}</option>`).join('');
+  sel.value=store.current;
+  $('#maxNo').value=c.maxNo;
+  $('#absentTxt').value=c.absent.join(', ');
+  $('#names').value=c.names||'';
+  $('#showNames').checked=!!c.showNames;
+  const off=new Set(c.absent);
+  let h='';
+  for(let i=1;i<=c.maxNo;i++) h+=`<div class="chip${off.has(i)?' off':''}" data-n="${i}">${i}</div>`;
+  $('#chips').innerHTML=h;
+  const n=participants(c).length;
+  if(n<2){ $('#summary').innerHTML='참가자가 2명 이상이어야 합니다.'; }
+  else{
+    const size=bracketSize(n);
+    $('#summary').innerHTML=`참가 <b>${n}명</b> → <b>${roundName(size)}</b> 대진 · 부전승 <b>${size-n}명</b>`;
+  }
+  $('#drawBtn').disabled=n<2;
+  let warn='';
+  if(c.bracket){
+    const now=participants(c).join(',');
+    if(now!==c.bracket.members.join(',')) warn='⚠ 참가자 설정이 현재 대진표와 다릅니다. 다시 추첨하면 반영됩니다.';
+  }
+  $('#warn').textContent=warn;
+}
+
+// ---------- bracket rendering ----------
+const BOX_W=140, SLOT_H=30, BOX_H=SLOT_H*2+5, UNIT=78, COL_W=180, TOP=120;
+let geom={W:0,H:0};
+
+function layout(b){
+  const R=rounds(b), size=b.size;
+  const sideH=Math.max(size/4,1)*UNIT;
+  function pos(r,i){
+    if(r===R-1) return {x:(R-1)*COL_W, cy:TOP+sideH/2, side:0};
+    const per=size/2**(r+2), left=i<per, j=left?i:i-per;
+    const cy=TOP+(j+0.5)*UNIT*2**r;
+    return {x:left? r*COL_W : (2*R-2-r)*COL_W, cy, side:left?-1:1};
+  }
+  return {R, pos, W:(2*R-1)*COL_W-(COL_W-BOX_W), H:TOP+sideH+16};
+}
+
+function slotHTML(b,r,i,k,p,names,showNames){
+  const key=r+'-'+i, w=b.winners[key];
+  const [a,c]=players(b,r,i);
+  let cl='slot', inner='';
+  if(p==null){
+    if(r===0){ cl+=' bye'; inner='부전승'; }
+    else { cl+=' tbd'; inner='<span class="n">·</span>'; }
+  }else{
+    inner=`<span class="n">${p}</span>`+(showNames&&names[p]?`<span class="nm">${esc(names[p])}</span>`:'');
+    if(a!=null&&c!=null){
+      cl+=' click';
+      if(w===k) cl+=' win'; else if(w!=null) cl+=' lose';
+    }else if(r===0){ cl+=' win'; }
+  }
+  return `<div class="${cl}" data-r="${r}" data-i="${i}" data-k="${k}"${r===0?` data-s="${2*i+k}"`:''}>${inner}</div>`;
+}
+
+function renderBracket(){
+  const c=cls(), b=c.bracket, el=$('#bracket');
+  if(!b){
+    el.style.width=''; el.style.height=''; el.style.transform='';
+    $('#wrap').style.height='';
+    el.innerHTML=`<div class="empty-state"><div class="big">🗺️</div><p>참가 번호를 확인한 뒤 <b>대진 추첨</b>을 눌러 주세요.</p></div>`;
+    $('#mlist').innerHTML=''; $('#listPanel').style.display='none';
+    return;
+  }
+  $('#listPanel').style.display='';
+  const names=parseNames(c.names), showNames=c.showNames;
+  const L=layout(b), R=L.R;
+  geom={W:L.W,H:L.H};
+  const nums=matchNumbers(b);
+  let html='', svg='';
+
+  // round labels
+  for(let r=0;r<R;r++){
+    const label=roundName(b.size/2**r);
+    const xs = r===R-1 ? [(R-1)*COL_W] : [r*COL_W,(2*R-2-r)*COL_W];
+    xs.forEach(x=> html+=`<div class="rlabel" style="left:${x}px;top:${TOP-34}px;width:${BOX_W}px">${label}</div>`);
+  }
+  // matches + connectors
+  for(let r=0;r<R;r++){
+    const cnt=b.size/2**(r+1);
+    for(let i=0;i<cnt;i++){
+      const p=L.pos(r,i), top=p.cy-BOX_H/2, key=r+'-'+i;
+      const [a,q]=players(b,r,i);
+      html+=`<div class="match${r===R-1?' final':''}" style="left:${p.x}px;top:${top}px;width:${BOX_W}px;height:${BOX_H}px">`
+        +slotHTML(b,r,i,0,a,names,showNames)+slotHTML(b,r,i,1,q,names,showNames)
+        +(nums[key]?`<span class="no">${nums[key]}</span>`:'')+`</div>`;
+      if(r<R-1){
+        const pp=L.pos(r+1,i>>1);
+        const x1=p.side<0?p.x+BOX_W:p.x;
+        const x2=p.side<0?pp.x:pp.x+BOX_W;
+        const mx=(x1+x2)/2;
+        const done=winner(b,r,i)!=null;
+        svg+=`<path d="M${x1} ${p.cy}H${mx}V${pp.cy}H${x2}" fill="none" stroke="${done?'#2e9e6b':'#b9c9d8'}" stroke-width="${done?3:2}"/>`;
+      }
+    }
+  }
+  // champion card
+  const champ=winner(b,R-1,0), fp=L.pos(R-1,0);
+  const cw=BOX_W+20, cx=fp.x-10, cy=Math.max(4,fp.cy-BOX_H/2-104);
+  html+= champ!=null
+    ? `<div class="champ" style="left:${cx}px;top:${cy}px;width:${cw}px"><div class="cup">🏆</div><div class="cn">${champ}번${names[champ]?' '+esc(names[champ]):''}</div><div style="font-size:12px">우승</div></div>`
+    : `<div class="champ empty" style="left:${cx}px;top:${cy}px;width:${cw}px"><div class="cup">🏆</div><div style="font-size:13px">우승자</div></div>`;
+
+  el.innerHTML=`<svg width="${L.W}" height="${L.H}">${svg}</svg>`+html;
+  el.style.width=L.W+'px'; el.style.height=L.H+'px';
+  fit();
+  renderList(b,nums,names);
+}
+
+function renderList(b,nums,names){
+  const R=rounds(b), nm=p=> p==null?'?':p+'번'+(names[p]&&cls().showNames?`(${esc(names[p])})`:'');
+  let h='';
+  for(let r=0;r<R;r++){
+    const cnt=b.size/2**(r+1); let part='';
+    for(let i=0;i<cnt;i++){
+      const key=r+'-'+i;
+      if(!nums[key]) continue;
+      const [a,q]=players(b,r,i), w=winner(b,r,i);
+      part+=`<div class="m${w!=null?' done':''}">${nums[key]}경기 · ${nm(a)} vs ${nm(q)}${w!=null?` → <b>${w}번 승</b>`:''}</div>`;
+    }
+    if(part) h+=`<h4>${roundName(b.size/2**r)}</h4>`+part;
+  }
+  const byes=[];
+  for(let i=0;i<b.size/2;i++) if(isBye(b,0,i)) byes.push(winner(b,0,i));
+  if(byes.length) h+=`<h4>부전승</h4><div class="m">${byes.sort((x,y)=>x-y).map(p=>p+'번').join(', ')}</div>`;
+  $('#mlist').innerHTML=h;
+}
+
+function fit(){
+  const wrap=$('#wrap'), el=$('#bracket');
+  if(!cls().bracket) return;
+  const on=$('#fitChk').checked;
+  wrap.classList.toggle('fit',on);
+  const s=on?Math.min(1,(wrap.clientWidth-2)/geom.W):1;
+  el.style.transform=`scale(${s})`;
+  el.style.marginLeft=on?Math.max(0,(wrap.clientWidth-geom.W*s)/2)+'px':'0';
+  wrap.style.height=on?(geom.H*s)+'px':(geom.H+20)+'px';
+}
+
+// ---------- draw animation ----------
+let animating=false;
+function draw(){
+  const c=cls(), list=participants(c);
+  if(list.length<2||animating) return;
+  if(c.bracket && Object.keys(c.bracket.winners).length && !confirm('이미 입력한 경기 결과가 있습니다. 다시 추첨할까요?')) return;
+  c.bracket=makeBracket(list); save();
+  renderSetup(); renderBracket();
+  const b=c.bracket;
+  const els=[...document.querySelectorAll('.slot[data-s]')].filter(e=>b.slots[+e.dataset.s]!=null);
+  const backup=els.map(e=>e.innerHTML);
+  const hidden=new Set(els.map((_,k)=>k));
+  animating=true; $('#drawBtn').disabled=true;
+  document.querySelectorAll('.slot').forEach(e=>{ if(!e.dataset.s) e.style.visibility='hidden'; });
+  document.querySelectorAll('.slot.win').forEach(e=>e.classList.remove('win'));
+  const spin=setInterval(()=>{
+    hidden.forEach(k=>{ els[k].innerHTML=`<span class="n">${list[randInt(list.length)]}</span>`; els[k].classList.add('spin'); });
+  },55);
+  const order=shuffle(els.map((_,k)=>k));
+  let t=900;
+  const step=Math.max(30,Math.min(90,1600/order.length));
+  order.forEach(k=>{
+    setTimeout(()=>{ hidden.delete(k); els[k].innerHTML=backup[k]; els[k].classList.remove('spin'); }, t);
+    t+=step;
+  });
+  setTimeout(()=>{ clearInterval(spin); animating=false; renderSetup(); renderBracket(); }, t+150);
+}
+
+function confetti(){
+  const colors=['#f2a900','#1565c0','#2e9e6b','#e5533d','#8e44ad'];
+  for(let i=0;i<90;i++){
+    const d=document.createElement('div');
+    d.className='confetti';
+    d.style.left=Math.random()*100+'vw';
+    d.style.background=colors[i%colors.length];
+    d.style.animationDuration=(2+Math.random()*2)+'s';
+    d.style.animationDelay=(Math.random()*.6)+'s';
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(),5000);
+  }
+}
+
+// ---------- events ----------
+$('#bracket').addEventListener('click',e=>{
+  const s=e.target.closest('.slot.click'); if(!s||animating) return;
+  const b=cls().bracket, r=+s.dataset.r, i=+s.dataset.i, k=+s.dataset.k, key=r+'-'+i;
+  const R=rounds(b), hadChamp=winner(b,R-1,0)!=null;
+  if(b.winners[key]===k) delete b.winners[key]; else b.winners[key]=k;
+  clearUpward(b,r,i);
+  save(); renderBracket();
+  if(!hadChamp && winner(b,R-1,0)!=null) confetti();
+});
+$('#chips').addEventListener('click',e=>{
+  const ch=e.target.closest('.chip'); if(!ch) return;
+  const c=cls(), n=+ch.dataset.n, set=new Set(c.absent);
+  set.has(n)?set.delete(n):set.add(n);
+  c.absent=[...set].sort((a,b)=>a-b); save(); renderSetup();
+});
+$('#absentTxt').addEventListener('change',e=>{
+  const c=cls();
+  c.absent=[...new Set((e.target.value.match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=c.maxNo))].sort((a,b)=>a-b);
+  save(); renderSetup();
+});
+$('#maxNo').addEventListener('change',e=>{
+  const c=cls();
+  c.maxNo=Math.max(2,Math.min(64,parseInt(e.target.value)||28));
+  c.absent=c.absent.filter(n=>n<=c.maxNo);
+  save(); renderSetup();
+});
+$('#allOn').onclick=()=>{ cls().absent=[]; save(); renderSetup(); };
+$('#names').addEventListener('input',e=>{ cls().names=e.target.value; save(); renderBracket(); });
+$('#showNames').addEventListener('change',e=>{ cls().showNames=e.target.checked; save(); renderBracket(); });
+$('#title').addEventListener('input',e=>{ store.title=e.target.value; save(); });
+$('#classSel').addEventListener('change',e=>{ store.current=e.target.value; save(); renderSetup(); renderBracket(); });
+$('#addClass').onclick=()=>{
+  const n=Object.keys(store.classes).length+1;
+  const name=prompt('새 반 이름을 입력하세요.', n+'반'); if(!name||!name.trim()) return;
+  const id='c'+Date.now();
+  store.classes[id]=defaultClass(name.trim()); store.current=id;
+  save(); renderSetup(); renderBracket();
+};
+$('#renameClass').onclick=()=>{
+  const name=prompt('반 이름을 바꿉니다.', cls().name); if(!name||!name.trim()) return;
+  cls().name=name.trim(); save(); renderSetup();
+};
+$('#delClass').onclick=()=>{
+  if(Object.keys(store.classes).length<=1){ alert('반이 하나뿐이라 삭제할 수 없습니다.'); return; }
+  if(!confirm(`'${cls().name}'의 설정과 대진표를 삭제할까요?`)) return;
+  delete store.classes[store.current]; store.current=Object.keys(store.classes)[0];
+  save(); renderSetup(); renderBracket();
+};
+$('#drawBtn').onclick=draw;
+$('#resetResults').onclick=()=>{
+  const b=cls().bracket; if(!b||!Object.keys(b.winners).length) return;
+  if(!confirm('경기 결과만 지우고 대진은 그대로 둘까요?')) return;
+  b.winners={}; save(); renderBracket();
+};
+$('#fitChk').onchange=fit;
+$('#fullBtn').onclick=()=>{
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+};
+$('#printBtn').onclick=()=>window.print();
+window.addEventListener('resize',fit);
+document.addEventListener('fullscreenchange',()=>setTimeout(fit,100));
+window.addEventListener('beforeprint',()=>{ $('#fitChk').checked=true; fit(); });
+
+renderSetup(); renderBracket();
+})();
+</script>
+</body>
+</html>
