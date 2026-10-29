@@ -81,9 +81,32 @@ textarea{width:100%;min-height:110px;margin-top:8px;resize:vertical}
 .mlist .done{color:var(--muted)}
 .mlist .done b{color:#11603d}
 
+.gtitle{margin:0;font-size:20px;color:var(--ocean);font-weight:900}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.gcard{border:1px solid var(--line);border-radius:12px;padding:12px}
+.gcard.a{border-top:5px solid var(--ocean)}
+.gcard.b{border-top:5px solid var(--land)}
+.ghead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.ghead h4{margin:0;font-size:18px}
+.gcount{font-weight:700;color:var(--muted)}
+.gcount.full{color:#11603d}
+.gchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
+.gchip{position:relative;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 2px;text-align:center;cursor:pointer;user-select:none}
+.gchip:hover{background:#f3f7fb}
+.gchip .num{display:block;font-weight:900;font-size:20px;line-height:1.1}
+.gchip .gn{display:block;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gchip.pick{background:var(--land-soft);border-color:var(--land)}
+.gchip.pick .num{color:#11603d}
+.gchip .rk{position:absolute;top:-7px;right:-5px;background:var(--gold);color:#fff;font-size:11px;font-weight:900;border-radius:999px;padding:1px 6px}
+.gchip.spin .num{color:var(--ocean)}
+.slot .tg{font-size:11px;font-weight:700;color:#fff;background:#7d91a8;border-radius:5px;padding:0 4px}
+.slot .tg.A{background:var(--ocean)}
+.slot .tg.B{background:var(--land)}
+
 .confetti{position:fixed;top:-12px;width:10px;height:14px;z-index:99;pointer-events:none;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(105vh) rotate(720deg)}}
 
+@media (max-width:800px){ .groups{grid-template-columns:1fr} }
 @media (max-width:640px){
   main{padding:12px 16px}
   .btn.primary{width:100%}
@@ -143,6 +166,23 @@ textarea{width:100%;min-height:110px;margin-top:8px;resize:vertical}
     </div>
   </section>
 
+  <section class="panel" id="groupPanel" style="display:none">
+    <div class="row">
+      <h3 class="gtitle">32강 · 조별 예선</h3>
+      <span class="hint">각 조에서 퍼즐을 가장 빨리 맞춘 순서대로 번호를 누르세요. 조별 8명이 16강에 진출합니다. 다시 누르면 취소됩니다.</span>
+    </div>
+    <div class="groups" id="groups"></div>
+    <div class="row noprint" style="margin-top:14px">
+      <label class="l" for="seedMode">16강 배치</label>
+      <select id="seedMode">
+        <option value="random">랜덤 추첨</option>
+        <option value="rank">조 순위대로 (A조 1위 vs B조 8위 …)</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="btn primary" id="draw16">🎲 16강 대진 추첨</button>
+    </div>
+  </section>
+
   <section class="panel" id="bracketPanel">
     <div class="toolbar">
       <span class="hint">번호를 눌러 이긴 학생을 표시하세요. 다시 누르면 취소됩니다.</span>
@@ -166,7 +206,7 @@ const KEY = 'wmp-bracket-v1';
 const $ = s => document.querySelector(s);
 
 // ---------- storage ----------
-function defaultClass(name){ return {name, maxNo:28, absent:[], names:'', showNames:false, bracket:null}; }
+function defaultClass(name){ return {name, maxNo:28, absent:[], names:'', showNames:false, groups:null, seedMode:'random', bracket:null}; }
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
@@ -187,6 +227,9 @@ function participants(c){
   return out;
 }
 function bracketSize(n){ let s=2; while(s<n) s*=2; return s; }
+// 17명 이상이면 2개 조 기록전(32강) → 조별 ADV명씩 16강 진출
+const ADV=8;
+const useGroups = n => n>ADV*2;
 function roundName(players){ return players===2?'결승':players===4?'준결승':players+'강'; }
 function seedOrder(n){
   let o=[1];
@@ -237,13 +280,19 @@ function clearUpward(b,r,i){
   const R=rounds(b);
   for(let rr=r+1, ii=i>>1; rr<R; rr++, ii>>=1) delete b.winners[rr+'-'+ii];
 }
-function makeBracket(list){
+// seeded: 시드 순서대로 정렬된 목록(없으면 랜덤), tags: {번호:'A1'} 조·순위 표시
+function makeBracket(list, seeded, tags){
   const size=bracketSize(list.length);
   const order=seedOrder(size);
-  const seeded=shuffle(list);
+  seeded=seeded||shuffle(list);
   const slots=order.map(s=> s<=seeded.length ? seeded[s-1] : null);
-  return {size, slots, winners:{}, members:list.slice().sort((a,b)=>a-b)};
+  return {size, slots, winners:{}, members:list.slice().sort((a,b)=>a-b), tags:tags||null};
 }
+function makeGroups(list){
+  const s=shuffle(list), h=Math.ceil(s.length/2), byNo=(a,b)=>a-b;
+  return {A:s.slice(0,h).sort(byNo), B:s.slice(h).sort(byNo), picks:{A:[],B:[]}, members:list.slice().sort(byNo)};
+}
+function groupsReady(g){ return g && g.picks.A.length===Math.min(ADV,g.A.length) && g.picks.B.length===Math.min(ADV,g.B.length); }
 function matchNumbers(b){
   const R=rounds(b), nums={}; let n=1;
   for(let r=0;r<R;r++){
@@ -272,17 +321,41 @@ function renderSetup(){
   $('#chips').innerHTML=h;
   const n=participants(c).length;
   if(n<2){ $('#summary').innerHTML='참가자가 2명 이상이어야 합니다.'; }
+  else if(useGroups(n)){
+    const h=Math.ceil(n/2);
+    $('#summary').innerHTML=`참가 <b>${n}명</b> → 32강 조별 예선 <b>A조 ${h}명 · B조 ${n-h}명</b> → 조별 <b>${ADV}명씩 16강</b> 진출`;
+  }
   else{
     const size=bracketSize(n);
     $('#summary').innerHTML=`참가 <b>${n}명</b> → <b>${roundName(size)}</b> 대진 · 부전승 <b>${size-n}명</b>`;
   }
-  $('#drawBtn').disabled=n<2;
+  $('#drawBtn').disabled=n<2||animating;
+  $('#drawBtn').textContent=useGroups(n)?'🎲 조 편성 추첨':'🎲 대진 추첨';
   let warn='';
-  if(c.bracket){
-    const now=participants(c).join(',');
-    if(now!==c.bracket.members.join(',')) warn='⚠ 참가자 설정이 현재 대진표와 다릅니다. 다시 추첨하면 반영됩니다.';
-  }
+  const ref=c.groups?c.groups.members:c.bracket&&c.bracket.members;
+  if(ref && participants(c).join(',')!==ref.join(',')) warn='⚠ 참가자 설정이 현재 조 편성/대진표와 다릅니다. 다시 추첨하면 반영됩니다.';
   $('#warn').textContent=warn;
+}
+
+function renderGroups(){
+  const c=cls(), g=c.groups;
+  $('#groupPanel').style.display=g?'':'none';
+  if(!g) return;
+  const names=parseNames(c.names);
+  $('#groups').innerHTML=['A','B'].map(G=>{
+    const need=Math.min(ADV,g[G].length), picks=g.picks[G];
+    const chips=g[G].map(n=>{
+      const rk=picks.indexOf(n);
+      return `<div class="gchip${rk>=0?' pick':''}" data-g="${G}" data-n="${n}"><span class="num">${n}</span>`
+        +(c.showNames&&names[n]?`<span class="gn">${esc(names[n])}</span>`:'')
+        +(rk>=0?`<span class="rk">${rk+1}위</span>`:'')+`</div>`;
+    }).join('');
+    return `<div class="gcard ${G.toLowerCase()}"><div class="ghead"><h4>${G}조 <span class="hint">(${g[G].length}명)</span></h4>`
+      +`<span class="gcount${picks.length===need?' full':''}">진출 ${picks.length}/${need}</span><span class="spacer"></span>`
+      +`<button class="btn noprint" data-reset="${G}">선택 초기화</button></div><div class="gchips">${chips}</div></div>`;
+  }).join('');
+  $('#seedMode').value=c.seedMode||'random';
+  $('#draw16').disabled=!groupsReady(g)||animating;
 }
 
 // ---------- bracket rendering ----------
@@ -309,7 +382,8 @@ function slotHTML(b,r,i,k,p,names,showNames){
     if(r===0){ cl+=' bye'; inner='부전승'; }
     else { cl+=' tbd'; inner='<span class="n">·</span>'; }
   }else{
-    inner=`<span class="n">${p}</span>`+(showNames&&names[p]?`<span class="nm">${esc(names[p])}</span>`:'');
+    const tg=b.tags&&b.tags[p];
+    inner=`<span class="n">${p}</span>`+(tg?`<span class="tg ${tg[0]}">${tg}</span>`:'')+(showNames&&names[p]?`<span class="nm">${esc(names[p])}</span>`:'');
     if(a!=null&&c!=null){
       cl+=' click';
       if(w===k) cl+=' win'; else if(w!=null) cl+=' lose';
@@ -323,7 +397,12 @@ function renderBracket(){
   if(!b){
     el.style.width=''; el.style.height=''; el.style.transform='';
     $('#wrap').style.height='';
-    el.innerHTML=`<div class="empty-state"><div class="big">🗺️</div><p>참가 번호를 확인한 뒤 <b>대진 추첨</b>을 눌러 주세요.</p></div>`;
+    const msg=c.groups
+      ? `조별 예선에서 진출자 ${ADV}명씩을 고른 뒤 <b>16강 대진 추첨</b>을 눌러 주세요.`
+      : useGroups(participants(c).length)
+        ? `참가 번호를 확인한 뒤 <b>조 편성 추첨</b>을 눌러 주세요.`
+        : `참가 번호를 확인한 뒤 <b>대진 추첨</b>을 눌러 주세요.`;
+    el.innerHTML=`<div class="empty-state"><div class="big">🗺️</div><p>${msg}</p></div>`;
     $('#mlist').innerHTML=''; $('#listPanel').style.display='none';
     return;
   }
@@ -404,17 +483,45 @@ function fit(){
 
 // ---------- draw animation ----------
 let animating=false;
+function renderAll(){ renderSetup(); renderGroups(); renderBracket(); }
+function hasProgress(c){
+  return (c.bracket && Object.keys(c.bracket.winners).length) || (c.groups && (c.groups.picks.A.length||c.groups.picks.B.length));
+}
 function draw(){
   const c=cls(), list=participants(c);
   if(list.length<2||animating) return;
-  if(c.bracket && Object.keys(c.bracket.winners).length && !confirm('이미 입력한 경기 결과가 있습니다. 다시 추첨할까요?')) return;
-  c.bracket=makeBracket(list); save();
-  renderSetup(); renderBracket();
+  if(hasProgress(c) && !confirm('이미 입력한 진출자/경기 결과가 있습니다. 처음부터 다시 추첨할까요?')) return;
+  if(useGroups(list.length)) drawGroups(list);
+  else { c.groups=null; drawBracket(makeBracket(list), list); }
+}
+function drawGroups(list){
+  const c=cls();
+  c.groups=makeGroups(list); c.bracket=null; save();
+  animating=true; renderAll();
+  const els=[...document.querySelectorAll('.gchip .num')];
+  const spin=setInterval(()=>els.forEach(e=>{ e.textContent=list[randInt(list.length)]; e.parentNode.classList.add('spin'); }),55);
+  setTimeout(()=>{ clearInterval(spin); animating=false; renderAll(); }, 1300);
+}
+function draw16(){
+  const c=cls(), g=c.groups;
+  if(!groupsReady(g)||animating) return;
+  if(c.bracket && Object.keys(c.bracket.winners).length && !confirm('이미 입력한 16강 경기 결과가 있습니다. 16강 대진을 다시 추첨할까요?')) return;
+  const tags={}, seeded=[];
+  ['A','B'].forEach(G=>g.picks[G].forEach((n,k)=>tags[n]=G+(k+1)));
+  // 순위 배치: A1,B1,A2,B2… 순으로 시드 → 1회전은 항상 A조 vs B조 (A1-B8, B1-A8 …)
+  for(let k=0;k<ADV;k++){ if(g.picks.A[k]!=null) seeded.push(g.picks.A[k]); if(g.picks.B[k]!=null) seeded.push(g.picks.B[k]); }
+  const list=seeded.slice();
+  drawBracket(makeBracket(list, c.seedMode==='rank'?seeded:null, tags), list);
+}
+function drawBracket(nb, list){
+  const c=cls();
+  c.bracket=nb; save();
+  renderAll();
   const b=c.bracket;
   const els=[...document.querySelectorAll('.slot[data-s]')].filter(e=>b.slots[+e.dataset.s]!=null);
   const backup=els.map(e=>e.innerHTML);
   const hidden=new Set(els.map((_,k)=>k));
-  animating=true; $('#drawBtn').disabled=true;
+  animating=true; $('#drawBtn').disabled=true; $('#draw16').disabled=true;
   document.querySelectorAll('.slot').forEach(e=>{ if(!e.dataset.s) e.style.visibility='hidden'; });
   document.querySelectorAll('.slot.win').forEach(e=>e.classList.remove('win'));
   const spin=setInterval(()=>{
@@ -427,7 +534,7 @@ function draw(){
     setTimeout(()=>{ hidden.delete(k); els[k].innerHTML=backup[k]; els[k].classList.remove('spin'); }, t);
     t+=step;
   });
-  setTimeout(()=>{ clearInterval(spin); animating=false; renderSetup(); renderBracket(); }, t+150);
+  setTimeout(()=>{ clearInterval(spin); animating=false; renderAll(); }, t+150);
 }
 
 function confetti(){
@@ -454,44 +561,61 @@ $('#bracket').addEventListener('click',e=>{
   save(); renderBracket();
   if(!hadChamp && winner(b,R-1,0)!=null) confetti();
 });
+$('#groups').addEventListener('click',e=>{
+  if(animating) return;
+  const c=cls(), g=c.groups; if(!g) return;
+  const rs=e.target.closest('[data-reset]'), ch=e.target.closest('.gchip');
+  if(!rs && !ch) return;
+  if(c.bracket && !confirm('16강 대진표가 이미 있습니다. 진출자를 바꾸면 16강 대진표가 지워집니다. 계속할까요?')) return;
+  if(rs){ g.picks[rs.dataset.reset]=[]; }
+  else{
+    const G=ch.dataset.g, n=+ch.dataset.n, picks=g.picks[G], k=picks.indexOf(n);
+    if(k>=0) picks.splice(k,1);
+    else if(picks.length<ADV) picks.push(n);
+    else { alert(`${G}조는 이미 ${ADV}명을 골랐습니다. 바꾸려면 먼저 선택된 번호를 눌러 취소하세요.`); return; }
+  }
+  c.bracket=null; save(); renderAll();
+});
+$('#seedMode').addEventListener('change',e=>{ cls().seedMode=e.target.value; save(); });
+$('#draw16').onclick=draw16;
 $('#chips').addEventListener('click',e=>{
   const ch=e.target.closest('.chip'); if(!ch) return;
   const c=cls(), n=+ch.dataset.n, set=new Set(c.absent);
   set.has(n)?set.delete(n):set.add(n);
-  c.absent=[...set].sort((a,b)=>a-b); save(); renderSetup();
+  c.absent=[...set].sort((a,b)=>a-b); save(); renderAll();
 });
 $('#absentTxt').addEventListener('change',e=>{
   const c=cls();
   c.absent=[...new Set((e.target.value.match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=c.maxNo))].sort((a,b)=>a-b);
-  save(); renderSetup();
+  save(); renderAll();
 });
 $('#maxNo').addEventListener('change',e=>{
   const c=cls();
   c.maxNo=Math.max(2,Math.min(64,parseInt(e.target.value)||28));
   c.absent=c.absent.filter(n=>n<=c.maxNo);
-  save(); renderSetup();
+  save(); renderAll();
 });
-$('#allOn').onclick=()=>{ cls().absent=[]; save(); renderSetup(); };
-$('#names').addEventListener('input',e=>{ cls().names=e.target.value; save(); renderBracket(); });
-$('#showNames').addEventListener('change',e=>{ cls().showNames=e.target.checked; save(); renderBracket(); });
+$('#allOn').onclick=()=>{ cls().absent=[]; save(); renderAll(); };
+$('#names').addEventListener('input',e=>{ cls().names=e.target.value; save(); renderGroups(); renderBracket(); });
+$('#showNames').addEventListener('change',e=>{ cls().showNames=e.target.checked; save(); renderGroups(); renderBracket(); });
 $('#title').addEventListener('input',e=>{ store.title=e.target.value; save(); });
-$('#classSel').addEventListener('change',e=>{ store.current=e.target.value; save(); renderSetup(); renderBracket(); });
+$('#classSel').addEventListener('change',e=>{ store.current=e.target.value; save(); renderAll(); });
 $('#addClass').onclick=()=>{
   const n=Object.keys(store.classes).length+1;
   const name=prompt('새 반 이름을 입력하세요.', n+'반'); if(!name||!name.trim()) return;
   const id='c'+Date.now();
   store.classes[id]=defaultClass(name.trim()); store.current=id;
-  save(); renderSetup(); renderBracket();
+  save(); renderAll();
 };
 $('#renameClass').onclick=()=>{
   const name=prompt('반 이름을 바꿉니다.', cls().name); if(!name||!name.trim()) return;
-  cls().name=name.trim(); save(); renderSetup();
+  cls().name=name.trim(); save(); renderAll();
 };
 $('#delClass').onclick=()=>{
   if(Object.keys(store.classes).length<=1){ alert('반이 하나뿐이라 삭제할 수 없습니다.'); return; }
   if(!confirm(`'${cls().name}'의 설정과 대진표를 삭제할까요?`)) return;
   delete store.classes[store.current]; store.current=Object.keys(store.classes)[0];
-  save(); renderSetup(); renderBracket();
+  save(); renderAll();
 };
 $('#drawBtn').onclick=draw;
 $('#resetResults').onclick=()=>{
@@ -509,7 +633,7 @@ window.addEventListener('resize',fit);
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,100));
 window.addEventListener('beforeprint',()=>{ $('#fitChk').checked=true; fit(); });
 
-renderSetup(); renderBracket();
+renderAll();
 })();
 </script>
 </body>
